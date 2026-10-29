@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stampede Alert</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#F6F7F9;--card:#fff;--ink:#14181F;--mute:#4B5563;--line:#E1E4E8;--blue:#1F4FD8;--red:#C62828;
+--s-bg:#CFE8D8;--s-ink:#14532D;--m-bg:#F6D58E;--m-ink:#7A3E00;--d-bg:#E88A80;--d-ink:#7F1712;color-scheme:light}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0F1318;--card:#181E26;--ink:#EEF1F5;--mute:#A6AFBC;--line:#2A323D;--blue:#7DA2FF;--red:#E5534B;
+--s-bg:#1F4D33;--s-ink:#CFEFDB;--m-bg:#6B4A12;--m-ink:#FBE3B0;--d-bg:#8E2A24;--d-ink:#FFE1DE;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0F1318;--card:#181E26;--ink:#EEF1F5;--mute:#A6AFBC;--line:#2A323D;--blue:#7DA2FF;--red:#E5534B;
+--s-bg:#1F4D33;--s-ink:#CFEFDB;--m-bg:#6B4A12;--m-ink:#FBE3B0;--d-bg:#8E2A24;--d-ink:#FFE1DE;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.4}
+button{font:inherit;cursor:pointer;min-height:44px;color:inherit}
+main{max-width:480px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
+.pill{font-size:12px;font-weight:700;padding:6px 12px;border-radius:99px}
+.lbl{font-size:12px;color:var(--mute)}
+h1{margin:0;font-size:26px}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.cell{border:0;border-radius:8px;min-height:52px;font-weight:700;font-size:13px;position:relative;padding:0}
+.s{background:var(--s-bg);color:var(--s-ink)}.m{background:var(--m-bg);color:var(--m-ink)}.d{background:var(--d-bg);color:var(--d-ink)}
+.me::after{content:"";position:absolute;right:4px;top:4px;width:10px;height:10px;border-radius:50%;background:var(--blue);border:2px solid var(--card)}
+.stats{display:flex;gap:10px}.stats .card{flex:1}
+.big{font-size:20px;font-weight:700}
+input[type=range]{width:100%;min-height:32px;accent-color:var(--blue)}
+.sos{height:56px;border:0;border-radius:14px;background:var(--red);color:#fff;font-weight:700;font-size:17px}
+.ghost{border:1px solid var(--line);border-radius:12px;background:var(--card);padding:0 14px}
+.log{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;font-size:14px}
+.log li{border-top:1px solid var(--line);padding-top:8px}
+.ov{position:fixed;inset:0;background:#A8201A;color:#fff;z-index:9;display:none;flex-direction:column;gap:18px;padding:calc(48px + env(safe-area-inset-top,0px)) 24px calc(32px + env(safe-area-inset-bottom,0px));overflow:auto}
+.ov.on{display:flex}
+.ov h2{margin:0;font-size:34px;line-height:1.1}
+.ov .route{background:#fff;color:#14181F;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.ov button{height:56px;border-radius:14px;font-weight:700;font-size:17px}
+.toast{position:fixed;left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));max-width:448px;margin:0 auto;background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:12px;display:none;z-index:8}
+.toast.on{display:block}
+</style>
+</head>
+<body>
+<main>
+  <div class="row"><strong>Stampede Alert</strong><span id="gps" class="pill s">Simulated location</span></div>
+  <div class="row"><div><div class="lbl">Your zone</div><h1 id="zname">Zone C3</h1></div><span id="chip" class="pill s">SAFE</span></div>
+
+  <section class="card" aria-label="Crowd density map">
+    <div class="grid" id="grid"></div>
+    <div class="row lbl" style="margin-top:10px;justify-content:flex-start;gap:14px"><span>Numbers are people per m²</span><span style="margin-left:auto">Blue dot: you</span></div>
+  </section>
+
+  <div class="stats">
+    <div class="card"><div class="lbl">Zone density</div><div class="big" id="dens">0.0 /m²</div></div>
+    <div class="card"><div class="lbl">Nearest exit</div><div class="big">Gate 4 · 120 m</div></div>
+  </div>
+
+  <section class="card" aria-label="Controls">
+    <label class="lbl" for="lvl">Simulated crowd size: <b id="lvlv">20%</b></label>
+    <input id="lvl" type="range" min="0" max="100" value="20">
+    <label class="lbl" for="thr" style="display:block;margin-top:10px">Alert threshold: <b id="thrv">4.0</b> people/m²</label>
+    <input id="thr" type="range" min="2" max="6" step="0.1" value="4">
+    <div class="row" style="margin-top:8px"><button id="useGps" class="ghost">Use my GPS</button><button id="theme" class="ghost">Toggle theme</button></div>
+  </section>
+
+  <button class="sos" id="sosBtn">SOS · Share my location</button>
+  <section class="card" id="sosBox" hidden>
+    <strong>Send emergency alert?</strong>
+    <p class="lbl" style="margin:6px 0 10px">Your location goes to police and medical staff.</p>
+    <div class="row"><button class="sos" id="sosYes" style="flex:1">Send now</button><button class="ghost" id="sosNo">Cancel</button></div>
+  </section>
+
+  <section class="card"><strong>Alert history</strong>
+    <ul class="log" id="log"><li class="lbl">No alerts yet. Raise the crowd size to cross the threshold.</li></ul>
+  </section>
+</main>
+
+<div class="ov" id="ov" role="alertdialog" aria-labelledby="ovt">
+  <span style="font-size:13px;font-weight:700;letter-spacing:.12em">CRITICAL ALERT</span>
+  <h2 id="ovt">Crowd density is critical near you</h2>
+  <p style="margin:0;font-size:17px">Move away from <span id="ovz">your zone</span> now. Head to Gate 4 using the east walkway.</p>
+  <div class="route"><b style="color:#9B1C1C;font-size:12px">SAFE ROUTE</b><span><b>1.</b> Walk east for 120 m</span><span><b>2.</b> Keep right, avoid Main Stage</span><span><b>3.</b> Exit through Gate 4</span></div>
+  <div style="margin-top:auto;display:flex;flex-direction:column;gap:12px">
+    <button id="ovSafe" style="background:#fff;border:0;color:#7F1712">I’m safe, dismiss</button>
+    <div style="text-align:center;font-size:12px">Sent automatically · zone limit exceeded</div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+  var W=[.3,.4,.6,.5,.3,.4,.7,1,.8,.4,.3,.6,.8,.7,.3,.2,.3,.5,.3,.2];
+  var ME=12, NAMES=[]; for(var r=0;r<4;r++)for(var c=0;c<5;c++)NAMES.push('Zone '+'ABCDE'[c]+(r+1));
+  var $=function(i){return document.getElementById(i)};
+  var lvl=$('lvl'),thr=$('thr'),grid=$('grid'),dismissed=false,coords=null,watchId=null;
+  try{var t=localStorage.getItem('thr'); if(t){thr.value=t}}catch(e){}
+
+  function dens(i){return lvl.value/100*6.5*W[i]}
+  function cls(d){var t=+thr.value;return d>=t?'d':d>=t*.6?'m':'s'}
+  function label(k){return k=='d'?'DANGER':k=='m'?'MODERATE':'SAFE'}
+  function toast(m){var t=$('toast');t.textContent=m;t.className='toast on';setTimeout(function(){t.className='toast'},3500)}
+  function log(m){var l=$('log');if(l.firstChild&&l.firstChild.className=='lbl')l.innerHTML='';var li=document.createElement('li');li.textContent=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})+' · '+m;l.insertBefore(li,l.firstChild)}
+
+  function render(){
+    $('lvlv').textContent=lvl.value+'%';$('thrv').textContent=(+thr.value).toFixed(1);
+    var h='';for(var i=0;i<20;i++){var d=dens(i),k=cls(d);
+      h+='<button class="cell '+k+(i==ME?' me':'')+'" aria-label="'+NAMES[i]+', '+d.toFixed(1)+' people per square metre, '+label(k)+'">'+d.toFixed(1)+'</button>'}
+    grid.innerHTML=h;
+    var d=dens(ME),k=cls(d),chip=$('chip');
+    chip.className='pill '+k;chip.textContent=label(k);
+    $('zname').textContent=NAMES[ME];$('dens').textContent=d.toFixed(1)+' /m²';$('ovz').textContent=NAMES[ME];
+    if(k=='d'){ if(!dismissed){$('ov').className='ov on';log('Critical density in '+NAMES[ME]+' ('+d.toFixed(1)+'/m²). Warning sent.');dismissed=true;
+        try{navigator.vibrate&&navigator.vibrate([300,150,300])}catch(e){}}}
+    else{dismissed=false;$('ov').className='ov'}
+  }
+
+  lvl.addEventListener('input',render);
+  thr.addEventListener('input',function(){try{localStorage.setItem('thr',thr.value)}catch(e){}render()});
+  $('ovSafe').onclick=function(){$('ov').className='ov';log('User marked safe.')};
+  $('theme').onclick=function(){var r=document.documentElement,dk=r.getAttribute('data-theme')=='dark'||(!r.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme:dark)').matches);r.setAttribute('data-theme',dk?'light':'dark')};
+
+  $('sosBtn').onclick=function(){$('sosBox').hidden=false;$('sosBtn').hidden=true};
+  $('sosNo').onclick=function(){$('sosBox').hidden=true;$('sosBtn').hidden=false};
+  $('sosYes').onclick=function(){
+    var w=coords?coords.lat.toFixed(4)+', '+coords.lng.toFixed(4):NAMES[ME];
+    log('SOS sent from '+w);toast('SOS sent with your location: '+w);$('sosNo').onclick()};
+
+  $('useGps').onclick=function(){
+    var g=$('gps');
+    if(!navigator.geolocation){toast('GPS is not available on this device.');return}
+    if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null;coords=null;g.className='pill s';g.textContent='Simulated location';$('useGps').textContent='Use my GPS';return}
+    watchId=navigator.geolocation.watchPosition(function(p){
+      coords={lat:p.coords.latitude,lng:p.coords.longitude};
+      g.className='pill s';g.textContent='GPS live · ±'+Math.round(p.coords.accuracy)+' m';$('useGps').textContent='Stop GPS'},
+    function(){watchId=null;toast('Location permission denied or unavailable. Using simulation.')},
+    {enableHighAccuracy:true});
+  };
+  render();
+})();
+</script>
+</body>
+</html>
